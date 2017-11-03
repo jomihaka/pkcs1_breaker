@@ -71,7 +71,7 @@ class BB98_Attack:
             c0 = RSA_mult(self.n, self.e, self.c, s0)
             if self.oracle(I2OSP(c0, self.bits)) == Oracle.OK:
                 return c0, s0
-            s0 += 1
+            s0 += 1 # "choose different random integers" :-)
 
     def _step_2a(self, c0):
         s = cdiv(self.n, self.B3)
