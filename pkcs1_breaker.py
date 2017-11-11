@@ -1,4 +1,5 @@
 import sys
+import random
 import gmpy2
 
 
@@ -65,13 +66,17 @@ class BB98_Attack:
                 s = self._step_2b(s, c0)
 
     def _step_1(self):
+        # theoretically the algorithm could loop here forever, if no good random s0 is found
+        # this is because the pseudorandom generator as finite precision that we are extending for n-bits
+        # unlikely of course (53-bits are a lot), but improvements would be nice
+        # e.g. it's not necessary to have the whole range [2,n] for tries
         s0 = 1
         while True:
             self.queries[0] += 1
             c0 = RSA_mult(self.n, self.e, self.c, s0)
             if self.oracle(I2OSP(c0, self.bits)) == Oracle.OK:
                 return c0, s0
-            s0 += 1 # "choose different random integers" :-)
+            s0 = random.randrange(2, self.n)
 
     def _step_2a(self, c0):
         s = cdiv(self.n, self.B3)
