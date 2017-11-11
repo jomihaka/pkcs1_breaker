@@ -44,8 +44,6 @@ class BB98_Attack:
         )
 
     def _run(self):
-        # if c is already PKCS conforming (c is encrypted message) we could skip step 1
-        # it is necessary for computing a signature, though
         print("Working.", end='', file=sys.stderr, flush=True)
         c0, s0 = self._step_1()
         M = [(self.B2, self.B3 - 1)]
@@ -66,10 +64,12 @@ class BB98_Attack:
                 s = self._step_2b(s, c0)
 
     def _step_1(self):
-        # theoretically the algorithm could loop here forever, if no good random s0 is found
-        # this is because the pseudorandom generator as finite precision that we are extending for n-bits
-        # unlikely of course (53-bits are a lot), but improvements would be nice
-        # e.g. it's not necessary to have the whole range [2,n] for tries
+        # Theoretically the algorithm could loop here forever, if no good random s0 is found.
+        # This is because the pseudorandom generator has finite precision
+        # that we are extending for n-bits.
+        # Unlikely of course (53-bits are a lot), but improvements would be nice.
+        # E.g. it's not necessary to have the whole range [2,n] for tries
+        # Also, if the message is not blinded, s0 = 1 will of course work
         s0 = 1
         while True:
             self.queries[0] += 1
