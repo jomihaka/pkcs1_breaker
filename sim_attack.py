@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import argparse
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.padding import PKCS1v15
@@ -22,17 +23,17 @@ UZYeATxPJn8Kjg==
 -----END PRIVATE KEY-----
 """
 
-_USAGE = """\
-usage:
-    {0}
-    {0} key message
-"""
-
 def load_private_pem(data):
     return serialization.load_pem_private_key(data, password=None, backend=default_backend())
 
 def encrypt_pkcs1(key, msg):
     return key.encrypt(msg, PKCS1v15())
+
+def encrypt_unpadded(key, m):
+    n = key.public_numbers().n
+    e = key.public_numbers().e
+    c_int = RSAEP(n, e, OS2IP(m))
+    return I2OSP(c_int, n.bit_length())
 
 def decrypt_unpadded(key, c):
     d = key.private_numbers().d
@@ -59,22 +60,44 @@ class TestOracle(Oracle):
 
 
 def main():
-    if len(sys.argv) == 1:
-        key = load_private_pem(_TESTKEY)
-        m = "kick it, CC"
-    elif len(sys.argv) == 3:
-        with open(sys.argv[1], "rb") as f:
+    parser = argparse.ArgumentParser(
+        description='Simulates the PKCS#1v15 padding attack'
+    )
+    parser.add_argument(
+        '-k', '--key',
+        help='PEM formatted file containing a private key to use with oracle'
+    )
+    parser.add_argument(
+        '--unpadded',
+        action='store_true',
+        help='Message is not padded before encrypting (this tests steps 1 and 4)'
+    )
+    parser.add_argument(
+        'm',
+        metavar='message',
+        nargs='?',
+        default='kick it, CC',
+        help='Message to use'
+    )
+
+    args = parser.parse_args()
+
+    if args.key:
+        with open(args.key, "rb") as f:
             key = load_private_pem(f.read())
-        m = sys.argv[2]
     else:
-        print(_USAGE.format(sys.argv[0]), file=sys.stderr)
-        return
+        key = load_private_pem(_TESTKEY)
+
+    m = args.m
 
     pubkey = key.public_key()
     nums = pubkey.public_numbers()
     print('Using a {}-bit key and message "{}"'.format(nums.n.bit_length(), m), file=sys.stderr)
 
-    c = encrypt_pkcs1(pubkey, m.encode())
+    if args.unpadded:
+        c = encrypt_unpadded(pubkey, m.encode())
+    else:
+        c = encrypt_pkcs1(pubkey, m.encode())
 
     attack = BB98_Attack(nums.n, nums.e, c, TestOracle(key))
     msg = unpad_pkcs1(attack.find_message())
